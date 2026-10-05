@@ -4,143 +4,214 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Prompt Battle</title>
+<script>try { const t = localStorage.getItem('pb_theme'); if (t) document.documentElement.dataset.theme = t; } catch {}</script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=Bricolage+Grotesque:opsz,wdth,wght@12..96,75..100,400..800&display=swap" rel="stylesheet">
 <style>
+  /* Print-proof look: the game is about matching an image, so images sit in crop marks
+     and the big type is overprinted in misregistered cyan and magenta, like a riso proof. */
   :root {
-    --bg: #0b0d17;
-    --panel: #151829;
-    --panel-2: #1d2138;
-    --line: #2c3152;
-    --text: #eef0ff;
-    --muted: #9097c0;
-    --accent: #7c5cff;
-    --accent-2: #22d3ee;
-    --good: #34d399;
-    --warn: #fbbf24;
-    --bad: #f87171;
-    --radius: 16px;
+    --paper: #e6e9ee;
+    --sheet: #fafbfc;
+    --ink: #1b2140;
+    --ink-soft: #545c78;
+    --rule: #c6ccd7;
+    --magenta: #d1106f;
+    --magenta-dark: #a80b59;
+    --cyan: #0090cc;
+    --yellow: #ffc61a;
+    --good: #12805c;
+    --bad: #c4253a;
+    --display: "Bricolage Grotesque", "Arial Black", system-ui, sans-serif;
+    --body: "Atkinson Hyperlegible", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --overprint: -0.025em 0.015em 0 var(--cyan), 0.03em 0.025em 0 var(--magenta);
+    --field: #fff;
+    --on-ink: #fff;
+    --on-chip: #1b2140;
+    --silver: #d4dae3;
+    --bronze: #e9b48f;
+    color-scheme: light;
+  }
+  /* Dark mode: the same proof printed on navy stock. Follows the system unless the header toggle picks one. */
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper: #161a33; --sheet: #1f2442; --ink: #eef0f7; --ink-soft: #a6adc8; --rule: #383f63;
+      --magenta: #ff3d97; --magenta-dark: #e3207f; --cyan: #34b9f0; --bad: #ff6b7f; --good: #3dd6a0;
+      --field: #12152b; --on-ink: #161a33; color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #161a33; --sheet: #1f2442; --ink: #eef0f7; --ink-soft: #a6adc8; --rule: #383f63;
+    --magenta: #ff3d97; --magenta-dark: #e3207f; --cyan: #34b9f0; --bad: #ff6b7f; --good: #3dd6a0;
+    --field: #12152b; --on-ink: #161a33; color-scheme: dark;
   }
   * { box-sizing: border-box; }
-  html, body { margin: 0; height: 100%; }
+  html, body { margin: 0; min-height: 100%; }
   body {
-    background: radial-gradient(1200px 600px at 20% -10%, #241a55 0%, transparent 60%),
-                radial-gradient(900px 500px at 110% 110%, #0e3a4a 0%, transparent 60%), var(--bg);
-    color: var(--text);
-    font: 18px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    background: var(--paper);
+    color: var(--ink);
+    font: 18px/1.5 var(--body);
   }
   button, input, textarea, select { font: inherit; color: inherit; }
   .hidden { display: none !important; }
+  :focus-visible { outline: 3px solid var(--cyan); outline-offset: 3px; }
 
   header {
-    display: flex; align-items: center; justify-content: space-between;
-    padding: 16px 28px; border-bottom: 1px solid var(--line);
+    display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap;
+    padding: 14px 28px; border-bottom: 2px solid var(--ink); background: var(--sheet);
   }
-  .logo { font-weight: 800; font-size: 26px; letter-spacing: .5px; cursor: pointer; }
-  .logo span { background: linear-gradient(90deg, var(--accent), var(--accent-2)); -webkit-background-clip: text; background-clip: text; color: transparent; }
-  .club { color: var(--muted); font-size: 15px; margin-left: 10px; font-weight: 500; }
+  .logo { display: flex; align-items: baseline; gap: 14px; cursor: pointer; }
+  .logo .mark {
+    font: 800 30px/1 var(--display); font-stretch: 75%; letter-spacing: -0.01em;
+    text-shadow: -1.5px 1px 0 var(--cyan), 1.5px 1.5px 0 var(--magenta); letter-spacing: .01em;
+  }
+  .club { color: var(--ink-soft); font-size: 16px; }
+  .nav { display: flex; gap: 6px; }
+  .nav .btn { background: transparent; border-color: transparent; }
+  .nav .btn:hover { border-color: var(--rule); }
 
-  main { max-width: 1400px; margin: 0 auto; padding: 28px; }
-  .screen { animation: fade .25s ease; }
-  @keyframes fade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+  main { max-width: 1400px; margin: 0 auto; padding: 32px 28px 48px; }
+  .screen { animation: fade .2s ease; }
+  @keyframes fade { from { opacity: 0; } to { opacity: 1; } }
 
-  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 24px; }
-  h1 { font-size: 56px; line-height: 1.05; margin: 0 0 12px; }
-  h2 { font-size: 30px; margin: 0 0 16px; }
-  h3 { font-size: 20px; margin: 0 0 10px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: 1px; }
-  .muted { color: var(--muted); }
+  .panel { background: var(--sheet); border: 1px solid var(--rule); border-radius: 4px; padding: 24px; }
+  h1, h2, .banner, .timer, .score-big { font-family: var(--display); }
+  h1 {
+    font-size: clamp(44px, 6.4vw, 92px); line-height: .95; font-weight: 800; font-stretch: 80%;
+    letter-spacing: 0; margin: 0 0 22px; text-shadow: var(--overprint); text-wrap: balance;
+  }
+  h2 { font-size: 34px; font-weight: 800; font-stretch: 85%; line-height: 1.1; margin: 0 0 16px; }
+  h3 { font-size: 20px; margin: 0 0 8px; font-weight: 700; }
+  .muted { color: var(--ink-soft); }
   .center { text-align: center; }
 
   .btn {
-    border: 0; border-radius: 12px; padding: 14px 26px; cursor: pointer;
-    background: var(--panel-2); border: 1px solid var(--line); font-weight: 600;
-    transition: transform .08s ease, filter .15s ease;
+    min-height: 44px; border-radius: 4px; padding: 10px 22px; cursor: pointer; font-weight: 700;
+    background: var(--sheet); border: 2px solid var(--ink);
+    transition: background-color .15s ease, transform .08s ease;
   }
-  .btn:hover { filter: brightness(1.2); }
-  .btn:active { transform: scale(.98); }
-  .btn:disabled { opacity: .4; cursor: not-allowed; }
-  .btn.primary { background: linear-gradient(90deg, var(--accent), #5b8cff); border: 0; color: #fff; }
-  .btn.big { font-size: 26px; padding: 22px 40px; border-radius: 16px; }
-  .btn.small { padding: 8px 14px; font-size: 15px; }
-  .btn.danger { color: var(--bad); }
+  .btn:hover { background: var(--field); }
+  .btn:active { transform: translateY(1px); }
+  .btn:disabled { opacity: .4; cursor: not-allowed; transform: none; }
+  .btn.primary { background: var(--magenta); border-color: var(--magenta); color: #fff; }
+  .btn.primary:hover:not(:disabled) { background: var(--magenta-dark); border-color: var(--magenta-dark); }
+  .btn.big { font: 800 26px/1 var(--display); font-stretch: 85%; padding: 20px 34px; }
+  .btn.small { padding: 8px 14px; font-size: 16px; }
+  .btn.danger { color: var(--bad); border-color: var(--bad); }
   .row { display: flex; gap: 14px; flex-wrap: wrap; align-items: center; }
 
   input[type=text], input[type=password], input[type=number], input[type=url], textarea {
-    width: 100%; background: var(--bg); border: 1px solid var(--line); border-radius: 12px;
+    width: 100%; background: var(--field); border: 2px solid var(--rule); border-radius: 4px;
     padding: 12px 14px; outline: none;
   }
-  input:focus, textarea:focus { border-color: var(--accent); }
-  label { display: block; font-size: 15px; color: var(--muted); margin: 14px 0 6px; }
+  input:focus, textarea:focus { border-color: var(--ink); }
+  input:focus-visible, textarea:focus-visible { outline: 3px solid var(--cyan); outline-offset: 1px; }
+  label { display: block; font-size: 16px; color: var(--ink-soft); margin: 14px 0 6px; }
+  code { font-size: .9em; background: var(--paper); padding: 1px 5px; border-radius: 3px; }
 
   /* Home */
-  .home { display: grid; grid-template-columns: 1.3fr 1fr; gap: 28px; align-items: start; }
-  .pitch p { font-size: 22px; color: var(--muted); margin: 0 0 28px; max-width: 640px; }
-  .rules { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin: 28px 0; }
-  .rule { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 16px; }
-  .rule b { display: block; font-size: 30px; }
-  .rule span { color: var(--muted); font-size: 15px; }
+  .home { display: grid; grid-template-columns: 1.45fr 1fr; gap: 48px; align-items: start; }
+  .pitch p { font-size: 23px; color: var(--ink-soft); margin: 0 0 28px; max-width: 34em; }
+  .pitch p b { color: var(--ink); }
+  .rules {
+    display: flex; flex-wrap: wrap; gap: 4px 28px; margin: 32px 0 36px; padding: 18px 0;
+    border-top: 2px solid var(--ink); border-bottom: 2px solid var(--ink);
+    font-size: 20px; color: var(--ink-soft);
+  }
+  .rules b { font: 800 34px/1 var(--display); font-stretch: 80%; color: var(--ink); margin-right: 6px; font-variant-numeric: tabular-nums; }
+  .board h3 { font: 800 26px/1.1 var(--display); font-stretch: 85%; margin-bottom: 12px; }
 
   .lb-list { list-style: none; margin: 0; padding: 0; }
-  .lb-list li { display: grid; grid-template-columns: 44px 1fr auto; gap: 10px; align-items: center; padding: 10px 6px; border-bottom: 1px solid var(--line); }
+  .lb-list li { display: grid; grid-template-columns: 40px 1fr auto; gap: 14px; align-items: center; padding: 11px 0; border-bottom: 1px solid var(--rule); }
   .lb-list li:last-child { border-bottom: 0; }
-  .lb-rank { font-weight: 800; color: var(--muted); text-align: center; }
-  .lb-list li:nth-child(1) .lb-rank { color: #ffd166; font-size: 22px; }
-  .lb-list li:nth-child(2) .lb-rank { color: #d9e2ec; font-size: 20px; }
-  .lb-list li:nth-child(3) .lb-rank { color: #e0a370; font-size: 19px; }
-  .lb-name { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .lb-prompt { display: block; color: var(--muted); font-size: 13px; font-weight: 400; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .lb-score { font-weight: 800; font-size: 22px; color: var(--accent-2); }
+  .lb-rank {
+    width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center;
+    font-weight: 700; font-size: 16px; color: var(--ink-soft); border: 1.5px solid var(--rule);
+  }
+  .lb-list li:nth-child(1) .lb-rank { background: var(--yellow); border-color: var(--yellow); color: var(--on-chip); }
+  .lb-list li:nth-child(2) .lb-rank { background: var(--silver); border-color: var(--silver); color: var(--on-chip); }
+  .lb-list li:nth-child(3) .lb-rank { background: var(--bronze); border-color: var(--bronze); color: var(--on-chip); }
+  .lb-name { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .lb-prompt { display: block; color: var(--ink-soft); font-size: 14px; font-weight: 400; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .lb-score { font: 800 26px/1 var(--display); font-stretch: 80%; color: var(--cyan); font-variant-numeric: tabular-nums; }
+  .lb-list li.muted { padding: 16px 0; }
 
   /* Setup */
   .setup { max-width: 640px; margin: 40px auto; }
 
   /* Play */
-  .play { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 28px; align-items: start; }
+  .play { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 48px; align-items: start; }
+  /* Image frame with printer's crop marks just outside each corner. */
   .imgbox {
-    position: relative; aspect-ratio: 1 / 1; width: 100%; border-radius: var(--radius); overflow: hidden;
-    background: var(--panel-2); border: 1px solid var(--line); display: grid; place-items: center;
+    --m: linear-gradient(var(--ink), var(--ink));
+    position: relative; aspect-ratio: 1 / 1; width: 100%; border-radius: 2px;
+    background: var(--field); border: 1px solid var(--rule); display: grid; place-items: center;
+  }
+  .imgbox::after {
+    content: ""; position: absolute; inset: -14px; pointer-events: none;
+    background:
+      var(--m) 0 10px / 10px 1.5px, var(--m) 10px 0 / 1.5px 10px,
+      var(--m) 100% 10px / 10px 1.5px, var(--m) calc(100% - 10px) 0 / 1.5px 10px,
+      var(--m) 0 calc(100% - 10px) / 10px 1.5px, var(--m) 10px 100% / 1.5px 10px,
+      var(--m) 100% calc(100% - 10px) / 10px 1.5px, var(--m) calc(100% - 10px) 100% / 1.5px 10px;
+    background-repeat: no-repeat;
   }
   .imgbox img { width: 100%; height: 100%; object-fit: contain; display: block; } /* show the whole image, never crop */
   .imgbox .tag {
-    position: absolute; top: 12px; left: 12px; background: rgba(0,0,0,.65); padding: 4px 12px;
-    border-radius: 999px; font-size: 14px; font-weight: 700; letter-spacing: .5px;
+    position: absolute; top: 0; left: 0; background: var(--ink); color: var(--on-ink); padding: 5px 12px;
+    font-size: 15px; font-weight: 700; max-width: 80%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   }
-  .timer { font-size: 96px; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums; }
-  .timer.low { color: var(--bad); animation: pulse 1s infinite; }
-  @keyframes pulse { 50% { opacity: .55; } }
-  .bar { height: 10px; background: var(--panel-2); border-radius: 999px; overflow: hidden; margin: 14px 0 24px; }
-  .bar > div { height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent-2)); transition: width .1s linear; }
-  .prompt-input { font-size: 26px !important; min-height: 150px; resize: none; }
-  .wc { font-size: 16px; margin-top: 8px; color: var(--muted); }
+  .timer {
+    font-size: 140px; font-weight: 800; font-stretch: 75%; line-height: .9; font-variant-numeric: tabular-nums;
+    text-shadow: var(--overprint);
+  }
+  .timer.low { color: var(--magenta); text-shadow: none; animation: pulse 1s infinite; }
+  @keyframes pulse { 50% { opacity: .5; } }
+  .bar { height: 12px; background: var(--sheet); border: 1.5px solid var(--ink); overflow: hidden; margin: 18px 0 26px; }
+  .bar > div { height: 100%; background: var(--ink); transition: width .1s linear; }
+  .timer.low + .bar > div { background: var(--magenta); }
+  .prompt-input { font-size: 28px !important; line-height: 1.35; min-height: 160px; resize: none; border-color: var(--ink) !important; }
+  .wc { font-size: 17px; margin-top: 8px; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
   .wc.over { color: var(--bad); font-weight: 700; }
-  .turn-name { font-size: 22px; color: var(--accent-2); font-weight: 700; margin-bottom: 4px; }
+  .turn-name { font-size: 24px; color: var(--magenta); font-weight: 700; margin-bottom: 4px; }
 
   /* Interstitial */
-  .gate { max-width: 720px; margin: 60px auto; text-align: center; }
-  .gate h1 { font-size: 64px; }
+  .gate { max-width: 760px; margin: 72px auto; text-align: center; }
+  .gate p { font-size: 21px; }
+  .gate #gateLoading { margin: 24px 0; }
 
   /* Results */
-  .results { display: grid; gap: 24px; }
-  .compare { display: grid; gap: 20px; grid-template-columns: repeat(var(--cols, 2), minmax(0, 1fr)); }
-  .score-big { font-size: 110px; font-weight: 900; line-height: 1; font-variant-numeric: tabular-nums;
-    background: linear-gradient(90deg, var(--accent), var(--accent-2)); -webkit-background-clip: text; background-clip: text; color: transparent; }
-  .score-sub { color: var(--muted); font-size: 20px; }
-  .crit { display: grid; grid-template-columns: 130px 1fr 60px; gap: 10px; align-items: center; margin: 8px 0; font-size: 16px; }
-  .crit .track { height: 10px; background: var(--panel-2); border-radius: 999px; overflow: hidden; }
-  .crit .fill { height: 100%; width: 0; background: var(--accent-2); transition: width 1s ease; }
-  .explain { font-size: 20px; background: var(--panel-2); border-radius: 12px; padding: 16px 18px; margin-top: 14px; }
-  .used-prompt { font-style: italic; color: var(--muted); margin-top: 10px; }
-  .banner { font-size: 44px; font-weight: 800; text-align: center; }
-  .badge { display: inline-block; padding: 4px 12px; border-radius: 999px; background: var(--good); color: #062; font-weight: 800; font-size: 15px; }
-  .secret { text-align: center; font-size: 20px; }
-  .secret b { color: var(--warn); }
+  .results { display: grid; gap: 28px; }
+  .compare { display: grid; gap: 24px; grid-template-columns: repeat(var(--cols, 2), minmax(0, 1fr)); }
+  .compare .panel { padding: 30px; }
+  .score-big {
+    font-size: 120px; font-weight: 800; font-stretch: 75%; line-height: .9; font-variant-numeric: tabular-nums;
+    text-shadow: var(--overprint);
+  }
+  .score-sub { color: var(--ink-soft); font-size: 19px; margin-top: 4px; }
+  .crit { display: grid; grid-template-columns: 120px 1fr 56px; gap: 12px; align-items: center; margin: 9px 0; font-size: 16px; }
+  .crit .track { height: 10px; background: var(--paper); overflow: hidden; }
+  .crit .fill { height: 100%; width: 0; background: var(--cyan); transition: width 1s ease; }
+  .crit span:last-child { text-align: right; font-variant-numeric: tabular-nums; }
+  .explain { font-size: 20px; border-left: 4px solid var(--magenta); padding: 4px 0 4px 16px; margin-top: 18px; }
+  .used-prompt { font-style: italic; color: var(--ink-soft); margin: 14px 0; font-size: 19px; }
+  .banner {
+    font-size: clamp(36px, 5vw, 64px); font-weight: 800; font-stretch: 80%; line-height: 1;
+    text-align: center; text-shadow: var(--overprint); text-wrap: balance;
+  }
+  .badge { display: inline-block; padding: 2px 10px; border-radius: 999px; background: var(--yellow); color: var(--on-chip); font-weight: 700; font-size: 15px; }
+  .secret { text-align: center; font-size: 21px; }
+  .secret b { color: var(--magenta); }
   .result-footer { display: grid; grid-template-columns: 1fr auto; gap: 24px; align-items: center; }
   .qr-wrap { display: flex; gap: 16px; align-items: center; }
-  .qr { background: #fff; padding: 8px; border-radius: 10px; }
+  .qr { background: #fff; padding: 8px; border: 1px solid var(--rule); }
   .qr img, .qr canvas { display: block; }
 
-  .spinner { width: 54px; height: 54px; border: 5px solid var(--line); border-top-color: var(--accent-2); border-radius: 50%; animation: spin 1s linear infinite; }
+  .spinner { width: 54px; height: 54px; border: 5px solid var(--rule); border-top-color: var(--magenta); border-radius: 50%; animation: spin 1s linear infinite; }
   @keyframes spin { to { transform: rotate(360deg); } }
-  .status { color: var(--muted); font-size: 16px; text-align: center; margin-top: 10px; }
+  .status { color: var(--ink-soft); font-size: 17px; text-align: center; margin-top: 10px; }
   .error { color: var(--bad); }
 
   /* Settings */
@@ -148,27 +219,33 @@
   .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0 20px; }
   .thumbs { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
   .thumbs div { position: relative; }
-  .thumbs img { width: 72px; height: 72px; object-fit: cover; border-radius: 8px; display: block; }
+  .thumbs img { width: 72px; height: 72px; object-fit: cover; border-radius: 2px; display: block; }
   .thumbs button { position: absolute; top: -6px; right: -6px; width: 22px; height: 22px; border-radius: 50%; border: 0; background: var(--bad); color: #fff; cursor: pointer; font-size: 13px; line-height: 1; }
-  .note { font-size: 14px; color: var(--muted); margin-top: 6px; }
-  hr { border: 0; border-top: 1px solid var(--line); margin: 24px 0; }
+  .note { font-size: 15px; color: var(--ink-soft); margin-top: 6px; }
+  hr { border: 0; border-top: 1px solid var(--rule); margin: 28px 0; }
 
   @media (max-width: 900px) {
-    main { padding: 16px; }
-    .home, .play, .grid2, .result-footer { grid-template-columns: 1fr; }
+    header { padding: 12px 16px; }
+    main { padding: 20px 16px 40px; }
+    .home, .play, .grid2, .result-footer { grid-template-columns: 1fr; gap: 28px; }
     .compare { grid-template-columns: 1fr; }
-    h1 { font-size: 40px; }
-    .timer { font-size: 64px; }
+    .timer { font-size: 88px; }
+    .score-big { font-size: 88px; }
+    .btn.big { font-size: 22px; padding: 16px 26px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation: none !important; transition: none !important; }
   }
 </style>
 </head>
 <body>
 <header>
-  <div class="logo" id="logo">⚔️ <span>Prompt Battle</span><span class="club" id="clubLabel"></span></div>
-  <div class="row">
-    <button class="btn small" id="btnLeaderboard">🏆 Leaderboard</button>
-    <button class="btn small" id="btnSettings">⚙️ Settings</button>
-  </div>
+  <div class="logo" id="logo"><span class="mark">Prompt Battle</span><span class="club" id="clubLabel"></span></div>
+  <nav class="nav">
+    <button class="btn small" id="btnTheme">Dark mode</button>
+    <button class="btn small" id="btnLeaderboard">Leaderboard</button>
+    <button class="btn small" id="btnSettings">Settings</button>
+  </nav>
 </header>
 
 <main>
@@ -176,21 +253,21 @@
   <section class="screen" id="screen-home">
     <div class="home">
       <div class="pitch">
-        <h1>Can you out-prompt the AI?</h1>
+        <h1>Can you <span style="white-space:nowrap">out-prompt</span> the AI?</h1>
         <p>See a target image. Write <b>one prompt</b> to recreate it. An AI judge scores how close you got.</p>
         <div class="rules">
-          <div class="rule"><b id="ruleSeconds">60s</b><span>to write your prompt</span></div>
-          <div class="rule"><b id="ruleWords">15</b><span>words max</span></div>
-          <div class="rule"><b>0–100</b><span>similarity score by AI</span></div>
+          <span><b id="ruleSeconds">60s</b>on the clock</span>
+          <span><b id="ruleWords">15</b>words max</span>
+          <span><b>100</b>points for a perfect match</span>
         </div>
         <div class="row">
-          <button class="btn primary big" data-mode="solo">🎯 Solo</button>
-          <button class="btn big" data-mode="duel">⚔️ 1 v 1</button>
+          <button class="btn primary big" data-mode="solo">Play solo</button>
+          <button class="btn big" data-mode="duel">Play 1 v 1</button>
         </div>
         <p class="note" id="setupWarning" style="margin-top:18px"></p>
       </div>
-      <div class="panel">
-        <h3>🏆 High scores</h3>
+      <div class="panel board">
+        <h3>High scores</h3>
         <ol class="lb-list" id="homeLeaderboard"></ol>
       </div>
     </div>
@@ -225,7 +302,7 @@
   <!-- PLAY -->
   <section class="screen hidden" id="screen-play">
     <div class="play">
-      <div class="imgbox"><img id="playTarget" alt="Target image"><span class="tag">TARGET</span></div>
+      <div class="imgbox"><img id="playTarget" alt="Target image"><span class="tag">Target</span></div>
       <div>
         <div class="turn-name" id="playWho"></div>
         <div class="timer" id="timer">60</div>
@@ -233,7 +310,7 @@
         <textarea class="prompt-input" id="promptInput" placeholder="Describe the image…" spellcheck="false"></textarea>
         <div class="wc" id="wordCount">0 / 15 words</div>
         <div class="row" style="margin-top:18px">
-          <button class="btn primary big" id="btnSubmit">Submit ⏎</button>
+          <button class="btn primary big" id="btnSubmit">Submit prompt</button>
         </div>
       </div>
     </div>
@@ -261,7 +338,7 @@
   <!-- LEADERBOARD -->
   <section class="screen hidden" id="screen-leaderboard">
     <div class="panel" style="max-width:900px;margin:0 auto">
-      <h2>🏆 Leaderboard</h2>
+      <h2>Leaderboard</h2>
       <ol class="lb-list" id="fullLeaderboard"></ol>
       <div class="row" style="margin-top:20px">
         <button class="btn" id="btnLbBack">Back</button>
@@ -275,7 +352,7 @@
   <!-- SETTINGS -->
   <section class="screen hidden" id="screen-settings">
     <div class="panel settings">
-      <h2>⚙️ Settings</h2>
+      <h2>Settings</h2>
       <p class="note">Everything is saved in this browser only. Your API key never leaves this laptop except to call Google.</p>
 
       <div class="grid2">
@@ -547,7 +624,7 @@ The explanation is 2 short sentences addressed to the player ("you"): what match
       return;
     }
     rows.forEach((r, i) => {
-      const medal = ['🥇', '🥈', '🥉'][i] || String(i + 1);
+      const medal = String(i + 1);
       listEl.append(el('li', {},
         el('span', { class: 'lb-rank' }, medal),
         // Prompts stay hidden by default so players can't copy the leader's prompt.
@@ -567,10 +644,10 @@ The explanation is 2 short sentences addressed to the player ("you"): what match
 
   // ---------- Home ----------
   function renderHome() {
-    $('clubLabel').textContent = settings.clubName ? '· ' + settings.clubName : '';
+    $('clubLabel').textContent = settings.clubName;
     $('ruleSeconds').textContent = settings.seconds + 's';
     $('ruleWords').textContent = settings.maxWords;
-    $('setupWarning').textContent = geminiKeys().length ? '' : '⚠️ Add a Gemini API key in Settings before playing.';
+    $('setupWarning').textContent = geminiKeys().length ? '' : 'Add a Gemini API key in Settings before playing.';
     renderLeaderboard($('homeLeaderboard'), 10);
     showScreen('home');
   }
@@ -707,7 +784,7 @@ The explanation is 2 short sentences addressed to the player ("you"): what match
   // ---------- Results ----------
   function resultCard(player) {
     const img = el('img', { alt: player.name + "'s image" });
-    const box = el('div', { class: 'imgbox' }, el('div', { class: 'spinner' }), el('span', { class: 'tag' }, player.name.toUpperCase()));
+    const box = el('div', { class: 'imgbox' }, el('div', { class: 'spinner' }), el('span', { class: 'tag' }, player.name));
     const score = el('div', { class: 'score-big' }, '··');
     const sub = el('div', { class: 'score-sub' }, 'Generating image…');
     const crits = el('div');
@@ -740,7 +817,7 @@ The explanation is 2 short sentences addressed to the player ("you"): what match
       requestAnimationFrame(() => requestAnimationFrame(() => { fill.style.width = (result[key] / max) * 100 + '%'; }));
       return el('div', { class: 'crit' }, el('span', {}, label), el('div', { class: 'track' }, fill), el('span', { class: 'muted' }, `${result[key]}/${max}`));
     }));
-    ui.explain.textContent = '🤖 ' + result.explanation;
+    ui.explain.textContent = result.explanation;
     ui.explain.classList.remove('hidden');
   }
 
@@ -800,7 +877,7 @@ The explanation is 2 short sentences addressed to the player ("you"): what match
   async function showResults() {
     const compare = $('compare');
     const targetCard = el('div', { class: 'panel' },
-      el('div', { class: 'imgbox' }, el('img', { src: game.target.dataUrl, alt: 'Target' }), el('span', { class: 'tag' }, 'TARGET')),
+      el('div', { class: 'imgbox' }, el('img', { src: game.target.dataUrl, alt: 'Target' }), el('span', { class: 'tag' }, 'Target')),
       el('div', { class: 'score-sub', style: 'margin-top:16px' }, 'The target'),
     );
     const uis = game.players.map(resultCard);
@@ -827,13 +904,13 @@ The explanation is 2 short sentences addressed to the player ("you"): what match
     if (game.players.length === 1) {
       const r = ranks[0];
       const best = sortedLb()[0];
-      if (r && r.rank === 1) banner.textContent = '🎉 NEW HIGH SCORE! 🎉';
+      if (r && r.rank === 1) banner.textContent = 'New high score!';
       else if (r) banner.textContent = `#${r.rank} on the leaderboard — high score to beat: ${best.score}`;
       else banner.textContent = 'Out of time! Try again?';
       if (r && r.rank <= 10) uis[0].sub.append(' ', el('span', { class: 'badge' }, `#${r.rank}`));
     } else {
       const [a, b] = game.players;
-      banner.textContent = a.score === b.score ? `🤝 It's a draw at ${a.score}!` : `🏆 ${(a.score > b.score ? a : b).name} wins!`;
+      banner.textContent = a.score === b.score ? `It's a draw at ${a.score}!` : `${(a.score > b.score ? a : b).name} wins!`;
     }
     banner.classList.remove('hidden');
 
@@ -893,7 +970,7 @@ The explanation is 2 short sentences addressed to the player ("you"): what match
   function saveSettings() {
     readSettingsForm();
     if (save(K.settings, settings)) $('testResult').textContent = '✅ Saved';
-    $('clubLabel').textContent = settings.clubName ? '· ' + settings.clubName : '';
+    $('clubLabel').textContent = settings.clubName;
   }
 
   async function testConnections() {
@@ -972,6 +1049,19 @@ The explanation is 2 short sentences addressed to the player ("you"): what match
     const a = el('a', { href: URL.createObjectURL(new Blob([csv], { type: 'text/csv' })), download: 'prompt-battle-leaderboard.csv' });
     a.click();
   };
+  const darkQuery = matchMedia('(prefers-color-scheme: dark)');
+  const isDark = () => (document.documentElement.dataset.theme || (darkQuery.matches ? 'dark' : 'light')) === 'dark';
+  const renderThemeButton = () => {
+    $('btnTheme').textContent = isDark() ? 'Light mode' : 'Dark mode';
+  };
+  $('btnTheme').onclick = () => {
+    const theme = isDark() ? 'light' : 'dark';
+    document.documentElement.dataset.theme = theme;
+    try { localStorage.setItem('pb_theme', theme); } catch { /* still switches for this visit */ }
+    renderThemeButton();
+  };
+  darkQuery.addEventListener('change', renderThemeButton);
+  renderThemeButton();
   $('btnSettings').onclick = openSettings;
   $('btnSave').onclick = saveSettings;
   $('btnSave2').onclick = saveSettings;

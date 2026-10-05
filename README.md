@@ -16,7 +16,7 @@ A single-file game for the AI club recruitment drive. Players see a target image
 python3 -m http.server 8000      # or: npx serve
 ```
 
-Open <http://localhost:8000>, go to **⚙️ Settings**, paste the Gemini key, then click **Save** and **Test connections**.
+Open <http://localhost:8000>, go to **Settings**, paste the Gemini key, then click **Save** and **Test connections**.
 
 Double-clicking `index.html` usually works too. A local server is safer for image loading.
 
