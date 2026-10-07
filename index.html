@@ -506,12 +506,31 @@
     window.scrollTo(0, 0);
   }
 
-  function imageUrl(prompt, seed) {
-    const template = settings.template.includes('{key}') && !imageKey() ? FREE_TEMPLATE : settings.template;
+  function fillTemplate(template, prompt, seed) {
     return template
       .replace('{prompt}', encodeURIComponent(prompt))
       .replace('{seed}', String(seed))
       .replace('{key}', encodeURIComponent(imageKey()));
+  }
+
+  // Fetches a keyed image so a failure reports Pollinations' real reason (bad key, no balance, unknown model…).
+  async function fetchImage(url, timeoutMs = 120000) {
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), timeoutMs);
+    try {
+      const res = await fetch(url, { signal: ctrl.signal });
+      if (!res.ok) {
+        let msg = await res.text().catch(() => '');
+        try { const j = JSON.parse(msg); msg = j.error?.message || j.message || j.error || msg; } catch { /* plain text */ }
+        throw new Error(`HTTP ${res.status}${msg ? ': ' + String(msg).slice(0, 200) : ''}`);
+      }
+      const blobUrl = URL.createObjectURL(await res.blob());
+      try { return await loadImage(blobUrl); } finally { URL.revokeObjectURL(blobUrl); }
+    } catch (e) {
+      throw new Error(e.name === 'AbortError' ? 'timed out' : e.message === 'Failed to fetch' ? 'blocked or unreachable (network/CORS)' : e.message);
+    } finally {
+      clearTimeout(t);
+    }
   }
 
   function loadImage(src, timeoutMs = 120000) {
@@ -535,13 +554,21 @@
     return c.toDataURL('image/jpeg', quality);
   }
 
+  let imageWarning = ''; // set when the keyed generator failed and the free one was used instead
+
   async function generateImage(prompt, seed = randSeed()) {
+    imageWarning = '';
+    if (settings.template.includes('{key}') && imageKey()) {
+      try { return toJpeg(await fetchImage(fillTemplate(settings.template, prompt, seed))); }
+      catch (e) { imageWarning = 'Pollinations key/model failed (' + e.message + ') — used the free model instead'; console.warn(imageWarning); }
+    }
+    const template = settings.template.includes('{key}') ? FREE_TEMPLATE : settings.template;
     let lastErr;
     for (let attempt = 0; attempt < 2; attempt++) {
-      try { return toJpeg(await loadImage(imageUrl(prompt, seed + attempt))); }
+      try { return toJpeg(await loadImage(fillTemplate(template, prompt, seed + attempt))); }
       catch (e) { lastErr = e; await sleep(3000); }
     }
-    throw lastErr;
+    throw new Error(lastErr.message + (imageWarning ? '. Also: ' + imageWarning : ''));
   }
 
   // ---------- AI judge ----------
@@ -980,14 +1007,14 @@ The explanation is 2 short sentences addressed to the player ("you"): what match
     let img;
     try {
       img = await generateImage('a yellow rubber duck on a blue background');
-      out.textContent = '✅ Image generator OK. Testing Gemini judge…';
+      out.textContent = (imageWarning ? '⚠️ ' + imageWarning + '. ' : '✅ Image generator OK. ') + 'Testing Gemini judge…';
     } catch (e) {
       out.textContent = '❌ Image generator: ' + e.message;
       return;
     }
     try {
       const r = await judge(img, img);
-      out.textContent = `✅ All good! (Same image scored ${r.total}/100.)`;
+      out.textContent = (imageWarning ? `⚠️ ${imageWarning}. ` : '') + `✅ Judge OK (same image scored ${r.total}/100).`;
     } catch (e) {
       out.textContent = '❌ Gemini judge: ' + e.message;
     }
