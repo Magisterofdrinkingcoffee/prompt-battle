@@ -446,7 +446,7 @@
   ];
   const DEFAULT_SETTINGS = {
     apiKey: '',
-    model: 'gemini-3.8-flash',
+    model: 'gemini-3.5-flash-lite',
     fallbackModels: 'gemini-flash-latest, gemini-flash-lite-latest',
     imageKey: '',
     seconds: 60,
@@ -474,7 +474,7 @@
 
   let settings = { ...DEFAULT_SETTINGS, ...load(K.settings, {}) };
   // Models Google has retired for new API users — move saved settings onto the current default.
-  if (['gemini-2.5-flash'].includes(settings.model)) settings.model = DEFAULT_SETTINGS.model;
+  if (['gemini-2.5-flash', 'gemini-3.8-flash'].includes(settings.model)) settings.model = DEFAULT_SETTINGS.model;
   if (settings.template === FREE_TEMPLATE) settings.template = DEFAULT_SETTINGS.template;
   if (settings.targets === OLD_DEFAULT_TARGETS.join('\n')) settings.targets = '';
   // Keys typed in Settings first, then the shared ones from config.js.

@@ -32,7 +32,7 @@ Settings typed in the game live in that browser only. A different browser, lapto
 | Setting | Notes |
 | --- | --- |
 | Gemini API keys | Optional when `config.js` has keys. Keys typed here are tried first. |
-| Gemini model | Default `gemini-3.8-flash`. If Google renames or retires it, put the current free Flash model name here. |
+| Gemini model | Default `gemini-3.5-flash-lite`. If Google renames or retires it, put the current free Flash model name here. |
 | Backup Gemini models | Tried in order when the main model says "high demand" or hits a rate limit. Default `gemini-flash-latest, gemini-flash-lite-latest`. |
 | Pollinations key | Optional, but strongly recommended for good images. Stored only in this browser. |
 | Seconds / max words | Default 60 / 15. |
